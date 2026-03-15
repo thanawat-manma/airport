@@ -4,7 +4,7 @@ const mysql = require('mysql2/promise'); // ใช้แบบ promise เพื
 const pool = mysql.createPool({
     host: '127.0.0.1', // ใช้ 127.0.0.1 ชัวร์กว่า localhost 
     user: 'root',
-    password: 'root',
+    password: '1234',
     database: 'flight_booking_db', // ชื่อ Database ที่คุณสร้างไว้
     waitForConnections: true,
     connectionLimit: 10,
