@@ -1,0 +1,32 @@
+# 
+version: '3.8'
+
+services:
+  # 1. ฐานข้อมูล MySQL
+  db:
+    image: mysql:8.0
+    container_name: flight_mysql
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: root # รหัสผ่าน root คือ 'root'
+      MYSQL_DATABASE: flight_booking_db
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+
+  # 2. ตัวจัดการ phpMyAdmin
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin
+    container_name: flight_phpmyadmin
+    restart: always
+    environment:
+      PMA_HOST: flight_mysql # อ้างอิงชื่อ container_name ของ db จะชัวร์กว่า
+      # ลบ MYSQL_ROOT_PASSWORD ตรงนี้ออก เพราะ phpMyAdmin จะใช้รหัสตอนที่เราพิมพ์หน้าเว็บ
+    ports:
+      - "8080:80"
+    depends_on:
+      - db
+
+volumes:
+  mysql_data:
