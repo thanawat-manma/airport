@@ -383,58 +383,6 @@ app.get('/api/airports', async (req, res) => {
     }
 });
 
-// ==========================================
-// 6. API: ดึงประวัติการจองตั๋วของ User (My Bookings)
-// ==========================================
-// app.get('/api/my-bookings', async (req, res) => {
-//     try {
-//         // รับค่า u_id ของคนที่ล็อกอินอยู่
-//         const { u_id } = req.query;
-
-//         if (!u_id) {
-//             return res.status(400).json({ success: false, message: 'ไม่พบรหัสผู้ใช้งาน' });
-//         }
-
-//         // ดึงข้อมูลการจอง โดย JOIN ตารางที่เกี่ยวข้องทั้งหมด
-//         // ดึงข้อมูลการจอง โดย JOIN ตารางที่เกี่ยวข้องทั้งหมด
-//         const sql = `
-//             SELECT 
-//                 r.res_id, 
-//                 r.res_status, 
-//                 DATE_FORMAT(r.res_date, '%d/%m/%Y %H:%i') AS booking_date,
-//                 f.f_id AS flight_id, 
-//                 CONCAT('FL00', f.f_id) AS flight_number,
-//                 DATE_FORMAT(f.f_date, '%d/%m/%Y') AS travel_date,
-//                 DATE_FORMAT(f.departure_time, '%H:%i') AS departure_time,
-//                 DATE_FORMAT(f.arrive_time, '%H:%i') AS arrival_time,
-//                 a.airline_name,
-//                 orig.airport_code AS origin_code,
-//                 dest.airport_code AS destination_code,
-//                 rd.seat_num,
-//                 rd.weight_Departure,   
-//                 rd.weight_Inbound,     
-//                 rd.food_status,        
-//                 pass.pass_fname,
-//                 pass.pass_lname
-//             FROM Reservation r
-//             JOIN Reservation_detail rd ON r.res_id = rd.res_id
-//             JOIN Flight f ON r.f_id = f.f_id
-//             JOIN Airline a ON f.air_id = a.airline_id
-//             JOIN Airport orig ON f.origin_airport_id = orig.airport_id
-//             JOIN Airport dest ON f.destination_airport_id = dest.airport_id
-//             JOIN Passenger pass ON r.pass_id = pass.pass_id
-//             WHERE r.u_id = ?  
-//             ORDER BY r.res_date DESC
-//         `;
-
-//         const [bookings] = await pool.query(sql, [u_id]);
-
-//         res.json({ success: true, data: bookings });
-//     } catch (error) {
-//         console.error("Error fetching bookings:", error);
-//         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงประวัติการจอง' });
-//     }
-// });
 
 // ==========================================
 // 6. API: ดึงประวัติการจองตั๋วของ User (My Bookings)
@@ -453,6 +401,8 @@ app.get('/api/my-bookings', async (req, res) => {
                 DATE_FORMAT(f.arrive_time, '%H:%i') AS arrival_time,
                 a.airline_name,
                 orig.airport_code AS origin_code, dest.airport_code AS destination_code,
+                rd.seat_id,            -- 📍 ดึง seat_id (รหัสของตั๋วแต่ละใบ)
+                rd.detail_status,      -- 📍 ดึงสถานะของตั๋วใบนี้
                 rd.seat_num, rd.weight_Departure, rd.weight_Inbound, rd.food_status,        
                 pass.pass_fname, pass.pass_lname
             FROM Reservation r
@@ -478,65 +428,31 @@ app.get('/api/my-bookings', async (req, res) => {
 // 7. API: ยกเลิกการจองตั๋ว (User Cancel Booking)
 // ==========================================
 app.post('/api/cancel-booking', async (req, res) => {
-    const { res_id } = req.body;
+    // 📍 เปลี่ยนมารับ seat_id แทน
+    const { seat_id } = req.body;
 
-    if (!res_id) {
-        return res.status(400).json({ success: false, message: 'ไม่พบรหัสการจอง' });
+    if (!seat_id) {
+        return res.status(400).json({ success: false, message: 'ไม่พบรหัสที่นั่ง' });
     }
 
     try {
-        // อัปเดตสถานะในตาราง Reservation ให้เป็น 'Cancelled'
+        // 📍 อัปเดตสถานะเฉพาะผู้โดยสารคนนั้น (Reservation_detail)
         const [result] = await pool.query(
-            `UPDATE Reservation SET res_status = 'Cancelled' WHERE res_id = ?`,
-            [res_id]
+            `UPDATE Reservation_detail SET detail_status = 'Cancelled' WHERE seat_id = ?`,
+            [seat_id]
         );
 
         if (result.affectedRows === 0) {
-            return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลการจองนี้' });
+            return res.status(404).json({ success: false, message: 'ไม่พบข้อมูลผู้โดยสารท่านนี้' });
         }
 
-        res.json({ success: true, message: 'ยกเลิกเที่ยวบินสำเร็จแล้ว' });
+        res.json({ success: true, message: 'ยกเลิกเที่ยวบินสำหรับผู้โดยสารท่านนี้สำเร็จ' });
     } catch (error) {
-        console.error("Cancel Booking Error:", error);
+        console.error("Cancel Passenger Error:", error);
         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการยกเลิกเที่ยวบิน' });
     }
 });
 
-// ==========================================
-// 8. API สำหรับ Admin: ดึงประวัติการจอง "ทั้งหมด" ทุกคน
-// ==========================================
-// app.get('/api/admin/bookings', async (req, res) => {
-//     try {
-//         const sql = `
-//             SELECT 
-//                 r.res_id, 
-//                 r.res_status, 
-//                 DATE_FORMAT(r.res_date, '%d/%m/%Y %H:%i') AS booking_date,
-//                 f.f_id AS flight_id, 
-//                 CONCAT('FL00', f.f_id) AS flight_number,
-//                 DATE_FORMAT(f.f_date, '%d/%m/%Y') AS travel_date,
-//                 a.airline_name,
-//                 orig.airport_code AS origin_code,
-//                 dest.airport_code AS destination_code,
-//                 pass.pass_fname,
-//                 pass.pass_lname,
-//                 u.u_email
-//             FROM Reservation r
-//             JOIN Flight f ON r.f_id = f.f_id
-//             JOIN Airline a ON f.air_id = a.airline_id
-//             JOIN Airport orig ON f.origin_airport_id = orig.airport_id
-//             JOIN Airport dest ON f.destination_airport_id = dest.airport_id
-//             JOIN Passenger pass ON r.pass_id = pass.pass_id
-//             JOIN User u ON pass.u_id = u.u_id
-//             ORDER BY r.res_id DESC
-//         `;
-//         const [bookings] = await pool.query(sql);
-//         res.json({ success: true, data: bookings });
-//     } catch (error) {
-//         console.error("Admin Fetch Bookings Error:", error);
-//         res.status(500).json({ success: false, message: 'เกิดข้อผิดพลาดในการดึงข้อมูล' });
-//     }
-// });
 
 // ==========================================
 // 8. API สำหรับ Admin: ดึงประวัติการจอง "ทั้งหมด" ทุกคน

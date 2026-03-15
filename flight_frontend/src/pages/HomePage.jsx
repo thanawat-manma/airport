@@ -17,7 +17,7 @@ const airlineLogos = {
   'Bangkok Airways': 'https://www.ktc.co.th/pub/media/online-travel-booking/partner-bangkok-airways.webp',
   'Thai Lion Air': 'https://www.gother.com/_next/image?url=https%3A%2F%2Fd3p9pa0orw8xnp.cloudfront.net%2Fimages%2Fairlines%2Flogo%2Fsl_logo296x188.png&w=640&q=100'
 };
-
+// 
 const defaultLogo = 'https://cdn-icons-png.flaticon.com/512/3135/3135715.png';
 
 function HomePage() {

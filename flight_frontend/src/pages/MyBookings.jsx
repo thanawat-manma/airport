@@ -50,7 +50,7 @@ function MyBookings() {
   };
 
   // 📍 ฟังก์ชันกดยกเลิกเที่ยวบิน
-  const handleCancelBooking = async (res_id) => {
+  const handleCancelBooking = async (seat_id) => {
     // 1. ถามเพื่อความชัวร์ก่อน (กันลูกค้าเผลอกดโดน)
     const isConfirm = window.confirm('คุณแน่ใจหรือไม่ว่าต้องการ "ยกเลิก" เที่ยวบินนี้?\n(หากยกเลิกแล้วจะไม่สามารถกู้คืนได้)');
     
@@ -58,16 +58,16 @@ function MyBookings() {
 
     try {
       // 2. ส่งรหัสไปให้หลังบ้านอัปเดตสถานะ
-      const response = await axios.post('http://localhost:5001/api/cancel-booking', { res_id });
+      const response = await axios.post('http://localhost:5001/api/cancel-booking', { seat_id });
       
       if (response.data.success) {
-        alert('ยกเลิกเที่ยวบินสำเร็จ');
+        alert('ยกเลิกผู้โดยสารสำเร็จ');
         // 3. รีเฟรชข้อมูลในหน้าเว็บใหม่ เพื่อให้ป้ายสถานะเปลี่ยนเป็นสีแดง
         fetchMyBookings(); 
       }
     } catch (error) {
       console.error("Error cancelling booking:", error);
-      alert('เกิดข้อผิดพลาดในการยกเลิกเที่ยวบิน');
+      alert('เกิดข้อผิดพลาดในการยกเลิก');
     }
   };
 
@@ -131,51 +131,54 @@ function MyBookings() {
                   </Grid>
 
                   {/* สถานะและที่นั่ง */}
-                  <Grid item xs={12} sm={3} sx={{ textAlign: 'right', borderLeft: { sm: '1px solid #eee' } }}>
-                    {/* ป้ายแสดงสถานะ (เขียว=ยืนยัน, แดง=ยกเลิก) */}
+                  <Grid item xs={12} sm={3} sx={{ textAlign: 'right', borderLeft: { sm: '1px solid #eee' }, display: 'flex', flexDirection: 'column', alignItems: 'flex-end' }}>
+                    
                     <Chip 
-                      label={booking.res_status === 'Confirmed' ? 'ยืนยันแล้ว' : booking.res_status === 'Cancelled' ? 'ยกเลิกแล้ว' : booking.res_status} 
-                      color={booking.res_status === 'Confirmed' ? 'success' : booking.res_status === 'Cancelled' ? 'error' : 'warning'} 
+                      label={booking.detail_status === 'Confirmed' ? 'ยืนยันแล้ว' : booking.detail_status === 'Cancelled' ? 'ยกเลิกแล้ว' : booking.detail_status} 
+                      color={booking.detail_status === 'Confirmed' ? 'success' : booking.detail_status === 'Cancelled' ? 'error' : 'warning'} 
                       sx={{ mb: 1, fontWeight: 'bold' }} 
                     />
                     <Typography variant="body2">ผู้โดยสาร: <b>{booking.pass_fname}</b></Typography>
-                    <Typography variant="body2" sx={{ mb: 2 }}>ที่นั่ง: <b>{booking.seat_num || '-'}</b></Typography>
-                    
-                    
-                    {/* 📍 เพิ่มส่วนแสดงบริการเสริม (Add-ons) ตรงนี้ครับ */}
-                    <Box sx={{ mt: 1, mb: 2, p: 1, backgroundColor: '#f0f4f8', borderRadius: 1, textAlign: 'left' }}>
+                    <Typography variant="body2" sx={{ mb: 1 }}>ที่นั่ง: <b>{booking.seat_num || '-'}</b></Typography>
+
+                    <Box sx={{ mt: 1, mb: 2, p: 1, backgroundColor: '#f0f4f8', borderRadius: 1, textAlign: 'left', width: '100%' }}>
                       <Typography variant="caption" display="block" color="text.secondary">
-                        👜 กระเป๋า (ไป-กลับ): <b>{booking.weight_Departure > 0 ? booking.weight_Departure : 0} / {booking.weight_Inbound > 0 ? booking.weight_Inbound : 0} กก.</b>
+                        👜 กระเป๋า: <b>{booking.weight_Departure > 0 ? booking.weight_Departure : 0} / {booking.weight_Inbound > 0 ? booking.weight_Inbound : 0} กก.</b>
                       </Typography>
                       <Typography variant="caption" display="block" color="text.secondary">
-                        🍱 อาหารบนเครื่อง: <b>{booking.food_status === 'Receive' ? 'รับอาหาร' : 'ไม่รับอาหาร'}</b>
+                        🍱 อาหาร: <b>{booking.food_status === 'Receive' ? 'รับอาหาร' : 'ไม่รับอาหาร'}</b>
                       </Typography>
                     </Box>
-                    {/* พิมพ์ตั๋ว */}
-                    <Button 
-                            variant="contained" 
-                            color="primary" 
-                            size="small" 
-                            fullWidth
-                            sx={{ borderRadius: 2 }}
-                            onClick={() => navigate('/ticket', { state: { ticket: booking } })}
-                          >
-                            🎟️ พิมพ์ตั๋ว
-                          </Button>
+                    
+                    {/* 📍 นำปุ่มพิมพ์ตั๋วกลับมาแล้ว! จัดให้อยู่ใน Box เดียวกับปุ่มยกเลิก */}
+                    {booking.detail_status === 'Confirmed' && (
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, width: '100%' }}>
+                        
+                        {/* ปุ่มพิมพ์ตั๋วสีน้ำเงิน */}
+                        <Button 
+                          variant="contained" 
+                          color="primary" 
+                          size="small"
+                          fullWidth
+                          onClick={() => handleCancelBooking(booking.res_id)}
+                        >
+                          🎟️ พิมพ์ตั๋ว
+                        </Button>
 
-                    {/* 📍 แสดงปุ่ม "ยกเลิก" เฉพาะตั๋วที่ยัง Confirmed อยู่เท่านั้น */}
-                    {booking.res_status === 'Confirmed' && (
-                      <Button 
-                        variant="outlined" 
-                        color="error" 
-                        size="small"
-                        onClick={() => handleCancelBooking(booking.res_id)}
-                      >
-                        ยกเลิกเที่ยวบิน
-                      </Button>
+                        {/* ปุ่มยกเลิกสีแดง */}
+                        <Button 
+                          variant="outlined" 
+                          color="error" 
+                          size="small"
+                          fullWidth
+                          onClick={() => handleCancelBooking(booking.seat_id)}
+                        >
+                          ยกเลิกเที่ยวบิน
+                        </Button>
+                        
+                      </Box>
                     )}
                   </Grid>
-
                 </Grid>
               </CardContent>
             </Card>
